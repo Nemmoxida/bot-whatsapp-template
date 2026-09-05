@@ -47,9 +47,18 @@ for (const file of eventFiles) {
  */
 async function startBot() {
   try {
-    const { state, saveCreds } = await withRetry(() => useMultiFileAuthState("auth_info"), { retries: 3, delayMs: 1000 });
-    const { version, isLatest } = await withRetry(() => fetchLatestBaileysVersion(), { retries: 3, delayMs: 1000 });
-    logger.info("Starting WhatsApp bot", { version: version.join("."), isLatest });
+    const { state, saveCreds } = await withRetry(
+      () => useMultiFileAuthState("auth_info"),
+      { retries: 3, delayMs: 1000 },
+    );
+    const { version, isLatest } = await withRetry(
+      () => fetchLatestBaileysVersion(),
+      { retries: 3, delayMs: 1000 },
+    );
+    logger.info("Starting WhatsApp bot", {
+      version: version.join("."),
+      isLatest,
+    });
 
     const sock = makeWASocket({
       version,
@@ -60,26 +69,30 @@ async function startBot() {
       generateHighQualityLinkPreview: true,
       markOnlineOnConnect: config.bot?.online || true,
       syncFullHistory: config.bot?.history || false,
-      shouldSyncHistoryMessage: config.bot?.history || false,
+      // shouldSyncHistoryMessage: config.bot?.history || false,
+      // shouldSyncHistoryMessage: true,
     });
 
-  // Save login credentials on update
+    // Save login credentials on update
     sock.ev.on("creds.update", saveCreds);
 
-  // Register all event handlers
+    // Register all event handlers
     for (const { eventName, handler } of eventHandlers) {
-    // Pass only the dependencies that the handler expects
+      // Pass only the dependencies that the handler expects
       if (eventName === "connection.update") {
         sock.ev.on(eventName, handler(sock, logger, saveCreds, startBot));
       } else if (eventName === "messages.upsert") {
         sock.ev.on(eventName, handler(sock, logger, commands));
       } else {
-      // For future extensibility, just pass sock and logger
+        // For future extensibility, just pass sock and logger
         sock.ev.on(eventName, handler(sock, logger));
       }
     }
   } catch (error) {
-    logger.error("Failed to start bot", { error: error.message, stack: error.stack });
+    logger.error("Failed to start bot", {
+      error: error.message,
+      stack: error.stack,
+    });
     setTimeout(startBot, 5000);
   }
 }
