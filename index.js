@@ -15,7 +15,7 @@ const { createLogger, withRetry, ...config } = require("./utils");
 // Logging via pino
 const baseLogger = pino({
   level: config.logging?.level || "info",
-  transport: config.logging?.logToFile ? { target: "pino-pretty" } : undefined,
+  // transport: config.logging?.logToFile ? { target: "pino-pretty" } : undefined,
 });
 const logger = createLogger(baseLogger);
 
