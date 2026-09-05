@@ -14,10 +14,10 @@ module.exports = {
   handler: (sock, logger) => async (eventData) => {
     logger.info(`[${"chats.update"}] Event triggered:`, eventData);
     // TODO: Implement your logic here.
-    const chat = eventData[0]; // data array yg kamu kasi
+    const chat = eventData[0];
 
-    const remoteJid = chat.id; // 205424292794559@lid
-    const pushName = chat.messages[0].message.pushName; // Kermit
+    const remoteJid = chat.id;
+    const pushName = chat.messages[0].message.pushName;
 
     if (
       chat.messages[0].message.key.participantAlt ==
@@ -72,6 +72,28 @@ module.exports = {
         chat.messages[0].message.message.imageMessage?.caption == "!sticker" ||
         chat.messages[0].message.message.videoMessage?.caption == "!sticker"
       ) {
+        if (
+          chat.messages[0].message.message.videoMessage?.fileLength > 10000000
+        ) {
+          return await sock.sendMessage(
+            remoteJid,
+            { text: "Yang bener aja mas, filenya kegedean. max 10Mb\n-Yuuna" },
+            {
+              quoted: chat.messages[0].message,
+            },
+          );
+        } else if (chat.messages[0].message.message.videoMessage?.seconds > 6) {
+          await sock.sendMessage(
+            remoteJid,
+            {
+              text: "Maksimal durasi video untuk dijadiin sticker itu 6 detik ya sayang~~\n-Yuuna",
+            },
+            {
+              quoted: chat.messages[0].message,
+            },
+          );
+        }
+
         const buffer = await downloadMediaMessage(
           chat.messages[0].message,
           "buffer",
@@ -83,12 +105,32 @@ module.exports = {
         );
 
         const sticker = new Sticker(buffer, {
-          pack: "Yuuna Bot", // nama pack stiker
-          author: "Kermit", // nama author
-          type: StickerTypes.FULL, // FULL = gaada border, CROPPED = ada border
+          pack: "Yuuna Bot",
+          author: "Kermit",
+          type: StickerTypes.FULL,
           categories: ["🤣", "😎"],
           id: "12345",
           quality: 50,
+          fps: 10,
+          crop: false,
+
+          ffmpeg: [
+            "-vcodec",
+            "libwebp",
+            "-filter:v",
+            "fps=10,scale=512:512:flags=lanczos:force_original_aspect_ratio=decrease,split[s0][s1];[s0]palettegen=max_colors=256[p];[s1][p]paletteuse=dither=bayer:bayer_scale=3",
+            "-loop",
+            "0",
+            "-ss",
+            "00:00:00",
+            "-t",
+            "00:00:06",
+            "-preset",
+            "picture",
+            "-an",
+            "-vsync",
+            "0",
+          ],
         });
         await sock.sendMessage(remoteJid, await sticker.toMessage(), {
           quoted: chat.messages[0].message,
